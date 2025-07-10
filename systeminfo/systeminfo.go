@@ -3,6 +3,7 @@ package systeminfo
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/disk"
@@ -19,6 +20,16 @@ func GetCPUinfo() (cpu.InfoStat, error) {
 	}
 
 	return cpuInfo[0], nil
+}
+
+// Returns percentual value of total CPU usage
+func GetCPUPercent() (float64, error) {
+	cpuPercentage, err := cpu.Percent(1*time.Second, false)
+	if err != nil {
+		return 0.0, fmt.Errorf("unable to get CPU usage percent: %w", err)
+	}
+
+	return cpuPercentage[0], nil
 }
 
 // Return Cpu Loads
@@ -49,6 +60,7 @@ func GetCPULoad() (cpu.TimesStat, error) {
 
 }
 
+// Returns Memory usage statistics
 func GetMEMLoad() (mem.VirtualMemoryStat, error) {
 
 	v, err := mem.VirtualMemory()
