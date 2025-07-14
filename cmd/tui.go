@@ -1,14 +1,15 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"github/iegpeppino/syspulse/systeminfo"
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/mem"
 )
 
@@ -16,12 +17,19 @@ type model struct {
 	height          int
 	width           int
 	cpuTotalPercent float64
-	cpuLoads        map[string]interface{}
+	cpuStats        cpu.TimesStat
+	cpuPrevStats    cpu.TimesStat
+	cpuTable        table.Model
 	// processes       []systeminfo.ProcessInfo
 	memory mem.VirtualMemoryStat
 	// disk            []systeminfo.DiskInfo
-	styles *Styles
-	err    error
+	styles      *Styles
+	err         error
+	initialized bool
+}
+
+type cpuItem struct {
+	title, desc string
 }
 
 type Styles struct {
@@ -34,6 +42,17 @@ func DefaulStyles() *Styles {
 	return s
 }
 
+var baseStyle = lipgloss.NewStyle().
+	BorderStyle(lipgloss.Border{
+		Top:    "---",
+		Bottom: "---"},
+	).
+	BorderForeground(lipgloss.Color("#FFBF00")).
+	Bold(true).
+	Padding(1, 1, 1, 2).
+	Margin(1, 1, 1, 2).
+	AlignHorizontal(lipgloss.Center)
+
 type tickMsg struct{}
 
 func tick() tea.Cmd {
@@ -43,6 +62,7 @@ func tick() tea.Cmd {
 }
 
 func (m model) Init() tea.Cmd {
+
 	return tick()
 }
 
@@ -52,25 +72,70 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+
 	case tickMsg:
 		cpuPercent, err := systeminfo.GetCPUPercent()
 		m.cpuTotalPercent = cpuPercent
 		m.err = err
 
 		mem, err := systeminfo.GetMEMLoad()
-		m.memory = mem
+		m.memory = *mem
 		m.err = err
 
-		cpuStats, err := systeminfo.GetCPULoad()
+		s := table.DefaultStyles()
+		s.Header = s.Header.
+			BorderStyle(lipgloss.NormalBorder()).
+			BorderForeground(lipgloss.Color("240")).
+			BorderBottom(true).
+			Bold(false)
+		s.Selected = s.Selected.
+			Foreground(lipgloss.Color("229")).
+			Background(lipgloss.Color("#FFBF00")).
+			Bold(false)
+		m.cpuTable.SetStyles(s)
 
-		var cpuLoads map[string]interface{}
-		err = json.Unmarshal([]byte(cpuStats.String()), &cpuLoads)
-		if err != nil {
-			fmt.Printf("Error unmarshalling CPU Loads: %v\n", err)
+		cpuTimes, _ := cpu.Times(false)
+		if len(cpuTimes) > 0 {
+			m.cpuPrevStats = m.cpuStats
+			m.cpuStats = cpuTimes[0]
 		}
 
-		m.cpuLoads = cpuLoads
-		m.err = err
+		t := table.New(
+			table.WithFocused(true),
+			table.WithHeight(7),
+			table.WithWidth(80),
+		)
+		m.cpuTable = t
+
+		delta := func(now, prev float64) string {
+			d := now - prev
+			if d > 0 {
+				return "↑"
+			} else if d < 0 {
+				return "↓"
+			} else {
+				return "="
+			}
+		}
+
+		rows := []table.Row{
+			{"User", fmt.Sprintf("%.2f%%", m.cpuStats.User), delta(m.cpuStats.User, m.cpuPrevStats.User)},
+			{"System", fmt.Sprintf("%.2f%%", m.cpuStats.System), delta(m.cpuStats.System, m.cpuPrevStats.System)},
+			{"Idle", fmt.Sprintf("%.2f%%", m.cpuStats.Idle), delta(m.cpuStats.Idle, m.cpuPrevStats.Idle)},
+			{"Nice", fmt.Sprintf("%.2f%%", m.cpuStats.Nice), delta(m.cpuStats.Nice, m.cpuPrevStats.Nice)},
+			{"Guest", fmt.Sprintf("%.2f%%", m.cpuStats.Guest), delta(m.cpuStats.Guest, m.cpuPrevStats.Guest)},
+			{"IRQ", fmt.Sprintf("%.2f%%", m.cpuStats.Irq), delta(m.cpuStats.Irq, m.cpuPrevStats.Irq)},
+			{"SoftIRQ", fmt.Sprintf("%.2f%%", m.cpuStats.Softirq), delta(m.cpuStats.Softirq, m.cpuPrevStats.Softirq)},
+		}
+		columns := []table.Column{
+			{Title: "Load", Width: 30},
+			{Title: "Value (%)", Width: 30},
+			{Title: "Delta", Width: 20},
+		}
+
+		m.cpuTable.SetStyles(s)
+		m.cpuTable.SetColumns(columns)
+		m.cpuTable.SetRows(rows)
 		return m, tick()
 
 	case tea.KeyMsg:
@@ -128,29 +193,20 @@ func (m model) View() string {
 		return fmt.Sprintf("Error: %v\nPress 'q' to quit.", m.err)
 	}
 
-	cpuLoads := make([][]string, 0, len(m.cpuLoads))
-	for key, value := range m.cpuLoads {
-		if key != "cpu" {
-			cpuLoads = append(cpuLoads, []string{key, fmt.Sprintf("%.2f%%", value.(float64))})
-		}
-	}
-	// t := table.New().
-	// 	Width(40).
-	// 	Border(lipgloss.NormalBorder()).
-	// 	BorderStyle(white).
-	// 	Headers("Cpu Stats").
-	// 	Rows(cpuLoads...)
-
 	return lipgloss.JoinVertical(
-		lipgloss.Left,
-		fmt.Sprintf(
-			"CPU: %.2f%%\n%s\n",
-			m.cpuTotalPercent,
-			loadGauge(m.cpuTotalPercent, 40)),
-		fmt.Sprintf(
-			"RAM: %.2f%%\n%s\n",
-			m.memory.UsedPercent,
-			loadGauge(m.memory.UsedPercent, 40)),
-		"Press 'q' to quit.",
+		lipgloss.Top,
+		lipgloss.JoinVertical(
+			lipgloss.Left,
+			fmt.Sprintf(
+				"CPU: %.2f%%\n%s\n",
+				m.cpuTotalPercent,
+				loadGauge(m.cpuTotalPercent, 45)),
+			// fmt.Sprintf(
+			// 	"RAM: %.2f%%\n%s\n",
+			// 	m.memory.UsedPercent,
+			// 	loadGauge(m.memory.UsedPercent, 40)),
+			baseStyle.Render(m.cpuTable.View()),
+			"Press 'q' to quit.",
+		),
 	)
 }
