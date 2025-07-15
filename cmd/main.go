@@ -8,7 +8,10 @@ import (
 )
 
 func main() {
-	m := model{}
+	m := model{
+		tabs:      []string{"CPU", "MEMORY", "PROCESSES", "DISK"},
+		ActiveTab: 0,
+	}
 	p := tea.NewProgram(m, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Println("Error running program", err)
