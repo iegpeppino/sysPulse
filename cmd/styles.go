@@ -21,7 +21,7 @@ func TableStyle() table.Styles {
 		AlignVertical(lipgloss.Center).
 		Bold(false)
 	s.Cell = s.Cell.
-		Align(lipgloss.Center).
+		AlignHorizontal(lipgloss.Left).
 		Padding(1, 0, 0, 1)
 
 	s.Selected = s.Selected.

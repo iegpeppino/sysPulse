@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -74,6 +75,16 @@ func (m model) renderTab(activeTab int) string {
 				loadGauge(m.memory.UsedPercent, 45)),
 			baseStyle.Render(m.memTable.View()),
 		)
+	case activeTab == 2:
+		return lipgloss.JoinVertical(
+			lipgloss.Left,
+			baseStyle.Render(m.procTable.View()),
+		)
+	case activeTab == 3:
+		return lipgloss.JoinVertical(
+			lipgloss.Left,
+			baseStyle.Render(m.diskTable.View()),
+		)
 	default:
 		return fmt.Sprint(m.tabs)
 	}
@@ -96,4 +107,15 @@ func convertBytes(bytes uint64) string {
 	default:
 		return fmt.Sprintf("%d B", bytes)
 	}
+}
+
+func initTable(cols []table.Column) table.Model {
+	t := table.New(
+		table.WithFocused(false),
+		table.WithHeight(20),
+		table.WithColumns(cols),
+		table.WithRows([]table.Row{}),
+		table.WithStyles(TableStyle()),
+	)
+	return t
 }

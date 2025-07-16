@@ -21,13 +21,15 @@ type model struct {
 	cpuStats        cpu.TimesStat
 	cpuPrevStats    cpu.TimesStat
 	cpuTable        table.Model
-	// processes       []systeminfo.ProcessInfo
-	memory   mem.VirtualMemoryStat
-	memTable table.Model
-	// disk            []systeminfo.DiskInfo
-	styles      *Styles
-	err         error
-	initialized bool
+	processes       []systeminfo.ProcessInfo
+	procTable       table.Model
+	memory          mem.VirtualMemoryStat
+	memTable        table.Model
+	disk            []systeminfo.DiskInfo
+	diskTable       table.Model
+	styles          *Styles
+	err             error
+	initialized     bool
 }
 
 type cpuItem struct {
@@ -72,14 +74,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.cpuStats = cpuTimes[0]
 		}
 
-		t := table.New(
-			table.WithFocused(false),
-			table.WithHeight(20),
-			table.WithWidth(80),
-		)
+		processes, _ := systeminfo.GetProcessInfo(7)
+		m.processes = processes
 
-		m.cpuTable = t
-		m.memTable = t
+		disks, _ := systeminfo.GetDISKUse()
+		m.disk = disks
 
 		cpuRows := []table.Row{
 			{"User", fmt.Sprintf("%.2f%%", m.cpuStats.User), delta(m.cpuStats.User, m.cpuPrevStats.User)},
@@ -91,14 +90,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			{"SoftIRQ", fmt.Sprintf("%.2f%%", m.cpuStats.Softirq), delta(m.cpuStats.Softirq, m.cpuPrevStats.Softirq)},
 		}
 
-		cpuColumns := []table.Column{
-			{Title: "Load", Width: 30},
-			{Title: "Value (%)", Width: 30},
-			{Title: "Delta", Width: 20},
-		}
-
-		m.cpuTable.SetStyles(TableStyle())
-		m.cpuTable.SetColumns(cpuColumns)
 		m.cpuTable.SetRows(cpuRows)
 
 		memRows := []table.Row{
@@ -110,14 +101,36 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			{"Cached", fmt.Sprintf("%s", convertBytes(m.memory.Cached))},
 		}
 
-		memCols := []table.Column{
-			{Title: "Type", Width: 40},
-			{Title: "Value", Width: 40},
+		m.memTable.SetRows(memRows)
+
+		procRows := []table.Row{}
+		for _, p := range processes {
+			row := table.Row{
+				fmt.Sprintf("%d", p.PID),
+				p.Name,
+				fmt.Sprint(p.Status),
+				fmt.Sprint(p.Runtime),
+				fmt.Sprintf("%s", convertBytes(uint64(p.Memory))),
+				fmt.Sprintf("%.2f%%", p.CPU),
+			}
+			procRows = append(procRows, row)
 		}
 
-		m.memTable.SetStyles(TableStyle())
-		m.memTable.SetColumns(memCols)
-		m.memTable.SetRows(memRows)
+		m.procTable.SetRows(procRows)
+
+		diskRows := []table.Row{}
+		for _, d := range m.disk {
+			row := table.Row{
+				fmt.Sprint(d.Partition.Mountpoint),
+				d.Partition.Fstype,
+				fmt.Sprintf("%s", convertBytes(d.Total)),
+				fmt.Sprintf("%s", convertBytes(d.Used)),
+				fmt.Sprintf("%s", convertBytes(d.Free)),
+			}
+			diskRows = append(diskRows, row)
+		}
+
+		m.diskTable.SetRows(diskRows)
 
 		return m, tick()
 
