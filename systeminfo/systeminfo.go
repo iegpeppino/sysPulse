@@ -3,6 +3,7 @@ package systeminfo
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/shirou/gopsutil/v4/cpu"
@@ -33,11 +34,11 @@ func GetCPUPercent() (float64, error) {
 }
 
 // Return Cpu Loads
-func GetCPULoad() (cpu.TimesStat, error) {
+func GetCPULoad() ([]cpu.TimesStat, error) {
 
 	cpuLoad, err := cpu.Times(false)
 	if err != nil {
-		return cpu.TimesStat{}, fmt.Errorf("unable to get CPU times: %w", err)
+		return []cpu.TimesStat{}, fmt.Errorf("unable to get CPU times: %w", err)
 	}
 
 	currLoad := cpuLoad[0]
@@ -56,19 +57,20 @@ func GetCPULoad() (cpu.TimesStat, error) {
 	currLoad.System = (currLoad.System / totalLoad) * 100
 	currLoad.User = (currLoad.User / totalLoad) * 100
 
-	return currLoad, nil
+	cpuLoad[0] = currLoad
+	return cpuLoad, nil
 
 }
 
 // Returns Memory usage statistics
-func GetMEMLoad() (mem.VirtualMemoryStat, error) {
+func GetMEMLoad() (*mem.VirtualMemoryStat, error) {
 
 	v, err := mem.VirtualMemory()
 	if err != nil {
-		return mem.VirtualMemoryStat{}, fmt.Errorf("unable to get memory state: %w", err)
+		return &mem.VirtualMemoryStat{}, fmt.Errorf("unable to get memory state: %w", err)
 	}
 
-	return mem.VirtualMemoryStat{
+	return &mem.VirtualMemoryStat{
 		Total:       v.Total,
 		Available:   v.Available,
 		Used:        v.Used,
@@ -91,7 +93,7 @@ type DiskInfo struct {
 func GetDISKUse() ([]DiskInfo, error) {
 
 	partitions, err := disk.Partitions(true)
-	disks := make([]DiskInfo, len(partitions))
+	var disks []DiskInfo
 	if err != nil {
 		return disks, fmt.Errorf("unable to get disk info: %w", err)
 	}
@@ -115,6 +117,10 @@ func GetDISKUse() ([]DiskInfo, error) {
 		return disks, errors.New("couldn't get disk partitions' stats")
 	}
 
+	sort.Slice(disks, func(i, j int) bool {
+		return disks[i].Total > disks[j].Total
+	})
+
 	return disks, nil
 }
 
@@ -122,19 +128,19 @@ type ProcessInfo struct {
 	PID     int32
 	Name    string
 	CPU     float64
-	Memory  float64
+	Memory  uint64
 	Runtime string
 	Status  []string
 }
 
-func GetProcessInfo() ([]ProcessInfo, error) {
+func GetProcessInfo(n int) ([]ProcessInfo, error) {
 
 	processes, err := process.Processes()
 	if err != nil {
 		return []ProcessInfo{}, fmt.Errorf("unable to read running processes: %w", err)
 	}
 
-	procesesInfo := make([]ProcessInfo, len(processes))
+	var processesInfo []ProcessInfo
 
 	for _, p := range processes {
 		proc := ProcessInfo{}
@@ -145,25 +151,47 @@ func GetProcessInfo() ([]ProcessInfo, error) {
 			proc.Name = "N/A"
 		}
 
-		memoryInfo, err := p.MemoryInfo()
+		proc.Status, err = p.Status()
 		if err != nil {
-			proc.Memory = 0.0
+			proc.Status = []string{"Unknown"}
 		}
-		proc.Memory = float64(memoryInfo.RSS)
+
+		memoryInfo, err := p.MemoryInfo()
+
+		// If for loop is not broken after a memoryInfo error
+		// a runtime error occurs
+		if err != nil {
+			processesInfo = append(processesInfo, ProcessInfo{
+				PID:    proc.PID,
+				Name:   proc.Name,
+				Status: proc.Status,
+				Memory: 0.0,
+				CPU:    0.0,
+			})
+			continue
+		}
+
+		proc.Memory = memoryInfo.RSS
 
 		cpuInfo, err := p.CPUPercent()
 		if err != nil {
 			proc.CPU = 0.0
 		}
+
 		proc.CPU = cpuInfo
 
-		proc.Status, err = p.Status()
-		if err != nil {
-			proc.Status = []string{"unknown"}
-		}
-
-		procesesInfo = append(procesesInfo, proc)
+		processesInfo = append(processesInfo, proc)
 	}
 
-	return procesesInfo, nil
+	// Getting only "n" number of processes
+	if len(processesInfo) > n {
+		processesInfo = processesInfo[:n]
+	}
+
+	// Sorting processes by CPU usage
+	sort.Slice(processesInfo, func(i, j int) bool {
+		return processesInfo[i].CPU > processesInfo[j].CPU
+	})
+
+	return processesInfo, nil
 }

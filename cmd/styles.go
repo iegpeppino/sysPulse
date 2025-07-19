@@ -5,12 +5,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-func DefaulStyles() *Styles {
-	s := new(Styles)
-	s.BorderColor = lipgloss.Color("#FFBF00")
-	return s
-}
-
 func TableStyle() table.Styles {
 	s := table.DefaultStyles()
 	s.Header = s.Header.
@@ -30,37 +24,70 @@ func TableStyle() table.Styles {
 	return s
 }
 
-var baseStyle = lipgloss.NewStyle().
-	BorderStyle(lipgloss.Border{
-		Top:    "---",
-		Bottom: "---"},
-	).
-	BorderForeground(lipgloss.Color("#FFBF00")).
-	Bold(true).
-	Padding(1, 1, 1, 2).
-	Margin(1, 1, 1, 2).
-	AlignHorizontal(lipgloss.Center)
-
-var tabStyle = lipgloss.NewStyle().
-	BorderStyle(lipgloss.NormalBorder()).
-	BorderForeground(lipgloss.Color("#FFBF00")).
-	Bold(true).
-	Padding(1, 1, 1, 1).
-	Margin(0, 1, 1, 1).
-	AlignHorizontal(lipgloss.Center).
-	Height(30)
-
+// Defining used colors
 var (
-	green  = lipgloss.NewStyle().Foreground(lipgloss.Color("#139213ff")).Bold(false)
-	yellow = lipgloss.NewStyle().Foreground(lipgloss.Color("#f1f155ff")).Bold(false)
-	orange = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFA500")).Bold(false)
-	red    = lipgloss.NewStyle().Foreground(lipgloss.Color("#d62222ff")).Bold(false)
-	gray   = lipgloss.NewStyle().Foreground(lipgloss.Color("#444444"))
-	white  = lipgloss.NewStyle().Foreground(lipgloss.Color("#FBFBFB")).Bold(true)
-	amber  = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFBF00")).Bold(true)
+	normal = lipgloss.Color("#EEEEEE")
+	subtle = lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#383838"}
+	green  = lipgloss.Color("#139213ff")
+	yellow = lipgloss.Color("#f1f155ff")
+	orange = lipgloss.Color("#FFA500")
+	red    = lipgloss.Color("#d62222ff")
+	gray   = lipgloss.Color("#444444")
+	white  = lipgloss.Color("#FBFBFB")
+	amber  = lipgloss.Color("#FFBF00")
 )
 
-func gaugeLoadStyle(cpuPercent float64) lipgloss.Style {
+var (
+	baseStyle = lipgloss.NewStyle().
+			BorderForeground(lipgloss.Color("#FFBF00")).
+			Bold(true).
+			Padding(1, 1, 1, 2).
+			Margin(0, 0, 0, 2).
+			AlignHorizontal(lipgloss.Center)
+
+	activeTabBorder = lipgloss.Border{
+		Top:         "─",
+		Bottom:      " ",
+		Left:        "│",
+		Right:       "│",
+		TopLeft:     "╭",
+		TopRight:    "╮",
+		BottomLeft:  "┘",
+		BottomRight: "└",
+	}
+
+	tabBorder = lipgloss.Border{
+		Top:         "─",
+		Bottom:      "─",
+		Left:        "│",
+		Right:       "│",
+		TopLeft:     "╭",
+		TopRight:    "╮",
+		BottomLeft:  "┴",
+		BottomRight: "┴",
+	}
+
+	base = lipgloss.NewStyle().Foreground(normal)
+
+	tab = lipgloss.NewStyle().
+		Border(tabBorder, true).
+		BorderForeground(amber).
+		Padding(0, 1)
+
+	activeTab = tab.Border(activeTabBorder, true)
+
+	tabGap = tab.
+		BorderTop(false).
+		BorderLeft(false).
+		BorderRight(false)
+
+	gauge = lipgloss.NewStyle().
+		Foreground(normal).
+		Margin(1, 1).
+		Padding(1, 1)
+)
+
+func gaugeProgress(cpuPercent float64) lipgloss.Color {
 	switch {
 	case cpuPercent < 50:
 		return green
