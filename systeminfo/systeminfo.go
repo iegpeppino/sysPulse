@@ -13,6 +13,7 @@ import (
 )
 
 // Get general CPU Info
+// Will be used in future implementations
 func GetCPUinfo() (cpu.InfoStat, error) {
 
 	cpuInfo, err := cpu.Info()
@@ -27,7 +28,7 @@ func GetCPUinfo() (cpu.InfoStat, error) {
 func GetCPUPercent() (float64, error) {
 	cpuPercentage, err := cpu.Percent(1*time.Second, false)
 	if err != nil {
-		return 0.0, fmt.Errorf("unable to get CPU usage percent: %w", err)
+		return 0.0, err
 	}
 
 	return cpuPercentage[0], nil
@@ -38,15 +39,16 @@ func GetCPULoad() ([]cpu.TimesStat, error) {
 
 	cpuLoad, err := cpu.Times(false)
 	if err != nil {
-		return []cpu.TimesStat{}, fmt.Errorf("unable to get CPU times: %w", err)
+		return []cpu.TimesStat{}, err
 	}
 
 	currLoad := cpuLoad[0]
 
+	// Calculate total CPU load
 	totalLoad := currLoad.Guest + currLoad.Idle + currLoad.Iowait + currLoad.Irq +
 		currLoad.Nice + currLoad.Softirq + currLoad.Steal + currLoad.System + currLoad.User
 
-	// Convert loads to percentual values
+	// Convert loads to percentual values using totalLoad
 	currLoad.Guest = (currLoad.Guest / totalLoad) * 100
 	currLoad.Idle = (currLoad.Idle / totalLoad) * 100
 	currLoad.Iowait = (currLoad.Iowait / totalLoad) * 100
@@ -67,7 +69,7 @@ func GetMEMLoad() (*mem.VirtualMemoryStat, error) {
 
 	v, err := mem.VirtualMemory()
 	if err != nil {
-		return &mem.VirtualMemoryStat{}, fmt.Errorf("unable to get memory state: %w", err)
+		return &mem.VirtualMemoryStat{}, err
 	}
 
 	return &mem.VirtualMemoryStat{
@@ -82,6 +84,7 @@ func GetMEMLoad() (*mem.VirtualMemoryStat, error) {
 
 }
 
+// Disk partition stats struct
 type DiskInfo struct {
 	Partition disk.PartitionStat
 	Fstype    string
@@ -101,6 +104,8 @@ func GetDISKUse() ([]DiskInfo, error) {
 	for _, p := range partitions {
 		diskInfo := DiskInfo{}
 		diskInfo.Partition = p
+		// Use mountpoint to get disks
+		// Virtual memory returns filepaths
 		usageStat, err := disk.Usage(p.Mountpoint)
 		if err != nil {
 			return disks, fmt.Errorf("unable to get disk stats: %w", err)
@@ -114,9 +119,10 @@ func GetDISKUse() ([]DiskInfo, error) {
 	}
 
 	if len(disks) == 0 {
-		return disks, errors.New("couldn't get disk partitions' stats")
+		return disks, errors.New("disks couldn't be found")
 	}
 
+	// Sort Disk by total capacity
 	sort.Slice(disks, func(i, j int) bool {
 		return disks[i].Total > disks[j].Total
 	})
@@ -124,6 +130,7 @@ func GetDISKUse() ([]DiskInfo, error) {
 	return disks, nil
 }
 
+// Running process stats struct
 type ProcessInfo struct {
 	PID     int32
 	Name    string
@@ -137,10 +144,11 @@ func GetProcessInfo(n int) ([]ProcessInfo, error) {
 
 	processes, err := process.Processes()
 	if err != nil {
-		return []ProcessInfo{}, fmt.Errorf("unable to read running processes: %w", err)
+		return []ProcessInfo{}, err
 	}
 
 	var processesInfo []ProcessInfo
+	var procErr error
 
 	for _, p := range processes {
 		proc := ProcessInfo{}
@@ -148,19 +156,29 @@ func GetProcessInfo(n int) ([]ProcessInfo, error) {
 
 		proc.Name, err = p.Name()
 		if err != nil {
+			procErr = errors.Join(procErr, err)
 			proc.Name = "N/A"
 		}
 
 		proc.Status, err = p.Status()
 		if err != nil {
+			procErr = errors.Join(procErr, err)
 			proc.Status = []string{"Unknown"}
 		}
 
-		memoryInfo, err := p.MemoryInfo()
+		cpuInfo, err := p.CPUPercent()
+		if err != nil {
+			procErr = errors.Join(procErr, err)
+			proc.CPU = 0.0
+		}
 
+		proc.CPU = cpuInfo
+
+		memoryInfo, err := p.MemoryInfo()
 		// If for loop is not broken after a memoryInfo error
 		// a runtime error occurs
 		if err != nil {
+			procErr = errors.Join(procErr, err)
 			processesInfo = append(processesInfo, ProcessInfo{
 				PID:    proc.PID,
 				Name:   proc.Name,
@@ -172,13 +190,6 @@ func GetProcessInfo(n int) ([]ProcessInfo, error) {
 		}
 
 		proc.Memory = memoryInfo.RSS
-
-		cpuInfo, err := p.CPUPercent()
-		if err != nil {
-			proc.CPU = 0.0
-		}
-
-		proc.CPU = cpuInfo
 
 		processesInfo = append(processesInfo, proc)
 	}
@@ -193,5 +204,5 @@ func GetProcessInfo(n int) ([]ProcessInfo, error) {
 		return processesInfo[i].CPU > processesInfo[j].CPU
 	})
 
-	return processesInfo, nil
+	return processesInfo, procErr
 }

@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"github/iegpeppino/syspulse/logger"
 	"github/iegpeppino/syspulse/systeminfo"
+	"log/slog"
 	"os"
 	"strings"
 	"time"
@@ -37,6 +39,7 @@ type model struct {
 	err             error
 }
 
+// Setup for key bindings
 type keyMap struct {
 	Left  key.Binding
 	Right key.Binding
@@ -44,6 +47,7 @@ type keyMap struct {
 	Quit  key.Binding
 }
 
+// Setting help message formats
 func (k keyMap) ShortHelp() []key.Binding {
 	return []key.Binding{k.Help, k.Quit}
 }
@@ -54,6 +58,7 @@ func (k keyMap) FullHelp() [][]key.Binding {
 	}
 }
 
+// Set key bindings using lipgloss.help
 var keys = keyMap{
 	Left: key.NewBinding(
 		key.WithKeys("left", "a"),
@@ -87,6 +92,7 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -98,27 +104,43 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		m.help.Width = msg.Width
 
+	// In case of tick
 	case tickMsg:
+
+		// Get and update system stats
 		cpuPercent, err := systeminfo.GetCPUPercent()
+		if err != nil {
+			logger.Logger.Error("Couldn't get CPU times", slog.String("error", err.Error()))
+		}
 		m.cpuTotalPercent = cpuPercent
-		m.err = err
 
 		mem, err := systeminfo.GetMEMLoad()
+		if err != nil {
+			logger.Logger.Error("Couldn't get memory stats", slog.String("error", err.Error()))
+		}
 		m.memory = *mem
-		m.err = err
 
+		// Compare previous cpuTimes with current
+		// and observe increment or decrement tendency
 		cpuTimes, _ := systeminfo.GetCPULoad()
 		if len(cpuTimes) > 0 {
 			m.cpuPrevStats = m.cpuStats
 			m.cpuStats = cpuTimes[0]
 		}
 
-		processes, _ := systeminfo.GetProcessInfo(7)
+		processes, err := systeminfo.GetProcessInfo(7)
+		if err != nil {
+			logger.Logger.Error("Unable to read running processes", slog.String("error", err.Error()))
+		}
 		m.processes = processes
 
-		disks, _ := systeminfo.GetDISKUse()
+		disks, err := systeminfo.GetDISKUse()
+		if err != nil {
+			logger.Logger.Error("Disk info error", slog.String("error", err.Error()))
+		}
 		m.disk = disks
 
+		// Update CPU table information
 		cpuRows := []table.Row{
 			{"User", fmt.Sprintf("%.2f%%", m.cpuStats.User), delta(m.cpuStats.User, m.cpuPrevStats.User)},
 			{"System", fmt.Sprintf("%.2f%%", m.cpuStats.System), delta(m.cpuStats.System, m.cpuPrevStats.System)},
@@ -131,6 +153,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.cpuTable.SetRows(cpuRows)
 
+		// Update RAM table information
 		memRows := []table.Row{
 			{"Total", fmt.Sprintf("%s", getByteMagnitude(m.memory.Total))},
 			{"Used", fmt.Sprintf("%s", getByteMagnitude(m.memory.Used))},
@@ -142,6 +165,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.memTable.SetRows(memRows)
 
+		// Update Running Processes table information
 		procRows := []table.Row{}
 		for _, p := range processes {
 			row := table.Row{
@@ -157,6 +181,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.procTable.SetRows(procRows)
 
+		// Update Disk table information
 		diskRows := []table.Row{}
 		for _, d := range m.disk {
 			row := table.Row{
@@ -173,18 +198,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return m, tick()
 
+	// Handle key pressing events
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, m.keys.Left):
-			m.ActiveTab = max(m.ActiveTab-1, 0)
+			m.ActiveTab = max(m.ActiveTab-1, 0) // Decrement activeTab if possible
 			return m, cmd
 		case key.Matches(msg, m.keys.Right):
-			m.ActiveTab = min(m.ActiveTab+1, len(m.tabs)-1)
+			m.ActiveTab = min(m.ActiveTab+1, len(m.tabs)-1) // Increment activeTab if possible
 			return m, cmd
 		case key.Matches(msg, m.keys.Help):
-			m.help.ShowAll = !m.help.ShowAll
+			m.help.ShowAll = !m.help.ShowAll // Show full help message
 		case key.Matches(msg, m.keys.Quit):
-			return m, tea.Quit
+			return m, tea.Quit // Quit program :(
 		}
 
 	}
@@ -193,13 +219,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
+
 	if m.width == 0 || m.height == 0 {
 		return "Loading...\nPress 'q' to quit."
 	}
+
 	if m.err != nil {
 		return fmt.Sprintf("Error: %v\nPress 'q' to quit.", m.err)
 	}
 
+	// Render category tabs
+	// Assign style depending on active tab
 	page := strings.Builder{}
 
 	tabRow := make([]string, len(m.tabs))
@@ -217,8 +247,8 @@ func (m model) View() string {
 	)
 
 	tabGap.MaxWidth(m.width)
-	gap := tabGap.Render(strings.Repeat(" ", max(0, m.width-lipgloss.Width(row)-2)))
-	sep := tabGap.Render(strings.Repeat(" ", max(0, m.width)))
+	gap := tabGap.Render(strings.Repeat(" ", max(0, m.width-lipgloss.Width(row)-2))) // Gap line after tabs
+	sep := tabGap.Render(strings.Repeat(" ", max(0, m.width)))                       // Bottom separator
 	row = lipgloss.JoinHorizontal(lipgloss.Bottom, row, gap)
 
 	page.WriteString(row + "\n\n")
@@ -227,10 +257,10 @@ func (m model) View() string {
 
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
-		page.String(),
-		m.renderTab(m.ActiveTab),
-		fmt.Sprint(sep),
-		baseStyle.Render(m.help.View(m.keys)),
+		page.String(),                         // Render category tabs
+		m.renderTab(m.ActiveTab),              // Render active tab content
+		fmt.Sprint(sep),                       // Render bottom separator
+		baseStyle.Render(m.help.View(m.keys)), // Render help message with controls
 	)
 
 }
