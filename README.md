@@ -136,6 +136,10 @@ _Administrator permissions may be required to access some hardware metrics._
 - __( h )__ : Show full help message
 
 
+## 🤝 Contributing
+### Submit a pull request
+If you'd like to contribute, please fork the repository and open a pull request to the `main` branch.
+
 ## Final notes
 
 It's been some time since I've taken on the challenge of learning programming and some of the skills needed to venture into the field of software developement and IT and make a change from the field I'm currently working in. While asking for programming projects suggestions, I came across the system metrics monitor, which resonated the most with me, since it involves two of the fields Im interested on takling on.
@@ -143,3 +147,4 @@ It's been some time since I've taken on the challenge of learning programming an
 _Some other functions are to be implemented in the future_
     _such as testing network availability (pinging) and setting_
 _system load thresholds to monitor and log reports when exceeded._
+
