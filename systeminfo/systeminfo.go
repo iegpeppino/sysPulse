@@ -166,6 +166,16 @@ func GetProcessInfo(n int) ([]ProcessInfo, error) {
 			proc.Status = []string{"Unknown"}
 		}
 
+		started, err := p.CreateTime()
+		if err != nil {
+			procErr = errors.Join(procErr, err)
+			proc.Runtime = "N/A"
+		}
+
+		// Divide by 1000 since CreateTime() returns uint time in milliseconds
+		runtime := time.Since(time.Unix(started/1000, 0)).Truncate(time.Second)
+		proc.Runtime = runtime.String()
+
 		cpuInfo, err := p.CPUPercent()
 		if err != nil {
 			procErr = errors.Join(procErr, err)
@@ -180,11 +190,12 @@ func GetProcessInfo(n int) ([]ProcessInfo, error) {
 		if err != nil {
 			procErr = errors.Join(procErr, err)
 			processesInfo = append(processesInfo, ProcessInfo{
-				PID:    proc.PID,
-				Name:   proc.Name,
-				Status: proc.Status,
-				Memory: 0.0,
-				CPU:    0.0,
+				PID:     proc.PID,
+				Name:    proc.Name,
+				Status:  proc.Status,
+				Runtime: proc.Runtime,
+				Memory:  0.0,
+				CPU:     0.0,
 			})
 			continue
 		}
