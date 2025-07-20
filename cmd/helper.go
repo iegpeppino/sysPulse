@@ -63,6 +63,18 @@ func modelInit() model {
 	return m
 }
 
+// Create table with default parameters
+func initTable(cols []table.Column) table.Model {
+	t := table.New(
+		table.WithFocused(false),
+		table.WithHeight(20),
+		table.WithColumns(cols),
+		table.WithRows([]table.Row{}),
+		table.WithStyles(TableStyle()),
+	)
+	return t
+}
+
 // Compares previous and actual number and returns symbol
 // Used to express CPU load variation tendency
 func delta(now, prev float64) string {
@@ -116,36 +128,64 @@ func (m model) renderTab(activeTab int) string {
 	switch {
 	// CPU stats
 	case activeTab == 0:
-		return lipgloss.JoinVertical(
+		return pageContentStyle.Render(lipgloss.JoinVertical(
 			lipgloss.Left,
 			gauge.Render(fmt.Sprintf(
 				"CPU: %.2f%%\n%s\n",
 				m.cpuTotalPercent,
 				loadGauge(m.cpuTotalPercent, 45))),
 			baseStyle.Render(m.cpuTable.View()),
-		)
+		))
+		// return lipgloss.JoinVertical(
+		// 	lipgloss.Left,
+		// 	gauge.Render(fmt.Sprintf(
+		// 		"CPU: %.2f%%\n%s\n",
+		// 		m.cpuTotalPercent,
+		// 		loadGauge(m.cpuTotalPercent, 45))),
+		// 	baseStyle.Render(m.cpuTable.View()),
+		// )
 	// Ram stats
 	case activeTab == 1:
-		return lipgloss.JoinVertical(
+		return pageContentStyle.Render(lipgloss.JoinVertical(
 			lipgloss.Left,
 			gauge.Render(fmt.Sprintf(
 				"RAM: %.2f%%\n%s\n",
 				m.memory.UsedPercent,
 				loadGauge(m.memory.UsedPercent, 45))),
 			baseStyle.Render(m.memTable.View()),
-		)
+		))
+		// return lipgloss.JoinVertical(
+		// 	lipgloss.Left,
+		// 	gauge.Render(fmt.Sprintf(
+		// 		"RAM: %.2f%%\n%s\n",
+		// 		m.memory.UsedPercent,
+		// 		loadGauge(m.memory.UsedPercent, 45))),
+		// 	baseStyle.Render(m.memTable.View()),
+		// )
 	// Running processes
 	case activeTab == 2:
-		return lipgloss.JoinVertical(
+		return pageContentStyle.Render(lipgloss.JoinVertical(
 			lipgloss.Left,
+			titleStyle.Render("TOP RUNNING PROCESSES"),
 			baseStyle.Render(m.procTable.View()),
-		)
+		))
+		// return lipgloss.JoinVertical(
+		// 	lipgloss.Left,
+		// 	titleStyle.Render("TOP RUNNING PROCESSES"),
+		// 	baseStyle.Render(m.procTable.View()),
+		// )
 	// Disk availability
 	case activeTab == 3:
-		return lipgloss.JoinVertical(
+		return pageContentStyle.Render(lipgloss.JoinVertical(
 			lipgloss.Left,
+			titleStyle.Render("AVAILABLE DISK PARTITIONS"),
 			baseStyle.Render(m.diskTable.View()),
-		)
+		))
+		// return lipgloss.JoinVertical(
+		// 	lipgloss.Left,
+		// 	titleStyle.Render("AVAILABLE DISK PARTITIONS"),
+		// 	baseStyle.Render(m.diskTable.View()),
+		// )
 	default:
 		return fmt.Sprint(m.tabs)
 	}
@@ -155,9 +195,9 @@ func (m model) renderTab(activeTab int) string {
 // otherwise any Memory stat would be a thousand characters long
 func getByteMagnitude(bytes uint64) string {
 	const (
-		KB = 1024.0
-		MB = 1024 ^ 2
-		GB = 1024 ^ 3
+		KB = 1024
+		MB = 1024 * KB
+		GB = 1024 * MB
 	)
 
 	switch {
@@ -170,16 +210,4 @@ func getByteMagnitude(bytes uint64) string {
 	default:
 		return fmt.Sprintf("%d B", bytes)
 	}
-}
-
-// Create table with default parameters
-func initTable(cols []table.Column) table.Model {
-	t := table.New(
-		table.WithFocused(false),
-		table.WithHeight(20),
-		table.WithColumns(cols),
-		table.WithRows([]table.Row{}),
-		table.WithStyles(TableStyle()),
-	)
-	return t
 }

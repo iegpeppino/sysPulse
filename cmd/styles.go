@@ -85,7 +85,22 @@ var (
 		Foreground(normal).
 		Margin(1, 1).
 		Padding(1, 1)
+
+	titleStyle = lipgloss.NewStyle().
+			Margin(2, 5, 1, 5).
+			Padding(0, 1, 0, 1).
+			Italic(true).
+			Bold(true).
+			Foreground(lipgloss.Color(normal)).
+			BorderStyle(lipgloss.NormalBorder()).
+			BorderForeground(amber).
+			BorderBottom(true)
+
+	pageContentStyle = lipgloss.NewStyle().
+				Height(32)
 )
+
+//pageContentStyle.Render()
 
 func gaugeProgress(cpuPercent float64) lipgloss.Color {
 	switch {
