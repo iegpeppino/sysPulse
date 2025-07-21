@@ -1,7 +1,7 @@
 [![Go](https://img.shields.io/badge/code-Go-blue?logo=go)](README.md)
 [![ES](https://img.shields.io/badge/lang-EN-red?logo=translate)](README.md)
 
-# syspulse
+# syspulse 📈
 
 Un monitor de recursos de sistema en interfaz de usuario en terminal (TUI) programado en Go, usando [Bubbletea](https://github.com/charmbracelet/bubbletea), [Lipgloss](https://github.com/charmbracelet/lipgloss) y [Gopsutil](https://github.com/shirou/gopsutil)
 
