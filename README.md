@@ -1,14 +1,24 @@
 [![Go](https://img.shields.io/badge/code-Go-blue?logo=go)](README.md)
 [![ES](https://img.shields.io/badge/lang-ES-red?logo=translate)](README.es.md)
 
-# syspulse
+# syspulse 📈
 
 A terminal based system monitor written in Go using [Bubbletea](https://github.com/charmbracelet/bubbletea), [Lipgloss](https://github.com/charmbracelet/lipgloss) and [Gopsutil](https://github.com/shirou/gopsutil)
 
 This is my capstone project for Boot.dev's backend bootcamp.
 It shows live CPU and RAM gauges, along CPU, Memory, Running Processes and Disk stats with folder style tabs on a (Fallout New Vegas inspired) amber-themed TUI.
 
-![syspulse demo](syspulse_demo.gif)
+![syspulse demo](demo.gif)
+
+## Why ?
+
+
+I've been steadily learning programming and IT skills with the goal of transitioning my career into the fields of software development and IT operations.
+Syspulse was born as a way to combine essential elements from both:
+
+- 👨🏻‍💻From software development: I've applied Go's concurrency, data structures and modules along with a CLI/TUI interface implemented through external libraries such as [Bubbletea](https://github.com/charmbracelet/bubbletea) and [Lipgloss](https://github.com/charmbracelet/lipgloss).
+
+- 📈 From IT systems: I've integrated system resource monitoring through [Gopsutil](https://github.com/shirou/gopsutil?tab=readme-ov-file), learning how to track CPU, memory, running processes and disk data live.
 
 ## Tech Stack
 
@@ -141,8 +151,6 @@ _Administrator permissions may be required to access some hardware metrics._
 If you'd like to contribute, please fork the repository and open a pull request to the `main` branch.
 
 ## Final notes
-
-It's been some time since I've taken on the challenge of learning programming and some of the skills needed to venture into the field of software developement and IT and make a change from the field I'm currently working in. While asking for programming projects suggestions, I came across the system metrics monitor, which resonated the most with me, since it involves two of the fields Im interested on takling on.
 
 _Some other functions are to be implemented in the future_
     _such as testing network availability (pinging) and setting_

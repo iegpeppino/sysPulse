@@ -8,7 +8,16 @@ Un monitor de recursos de sistema en interfaz de usuario en terminal (TUI) progr
 Este es mi proyecto final para el bootcamp de backend de Boot.dev.
 Este programa muestra barras indicadoras de carga de CPU y Memoria, como también métricas de CPU, Memoria, Procesos en Ejecución y Discos en una  interfaz de usuario en terminal TUI con una temática (basada en Fallout New Vegas) color ámbar.
 
-![syspulse demo](syspulse_demo.gif)
+![syspulse demo](demo.gif)
+
+## Por qué?
+
+He estado aprendiendo constantemente habilidades de programación y TI, con el objetivo de hacer la transición de mi carrera hacia los campos de desarrollo de software y TI.
+Syspulse nación como una manera de combinar elementos esenciales de ambos:
+
+- 👨🏻‍💻 Del desarrollo de software: Del lenguaje Go, he aplicado la concurrencia, estructuras de datos y módulos, junto a una interfaz CLI/TUI usando librería externas como [Bubbletea](https://github.com/charmbracelet/bubbletea) y [Lipgloss](https://github.com/charmbracelet/lipgloss).
+
+- 📈 De sistemas TI: He integrado el monitoreo de recursos del sistema a través de [Gopsutil](https://github.com/shirou/gopsutil?tab=readme-ov-file), aprendiendo como rastrear información y datos de rendimiento en vivo sobre el CPU, memoria, discos y procesos en ejecución.
 
 ## Tech Stack
 
